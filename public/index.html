@@ -45,49 +45,36 @@
 
                     <!-- Если ошибок нет, то начинаем выводить видео -->
                     <?php if (is_array($response) && !isset($response['error'])): ?>
-                        <span>Результат поиска по запросу: <?= $_GET['query'] ?> (Найдено всего результатов: <?= $response['pageInfo']['totalResults'] ?>)</span>
-                        
+                        <span>Результат поиска по запросу: <?= $_GET['query'] ?></span>
+    
                         <!-- Выполняем проверку на наличие видео, если вдруг поиск ничего не нашел выводим заглушку -->
                         <?php if (count($response['items']) > 0) : ?>
-                            <?php foreach ($response['items'] as $item) : ?>
-                                <div class="mt-2">
-                                    <div class="card container-fluid">
-                                        <div class="row">
-                                            <div>
-                                                <img 
-                                                    src="<?= $item['snippet']['thumbnails']['medium']['url'] ?>"
-                                                    width="<?= $item['snippet']['thumbnails']['medium']['width'] ?>"
-                                                    height="<?= $item['snippet']['thumbnails']['medium']['height'] ?>"
-                                                    alt="">
-                                            </div>
-                                            <div class="col-8">
-                                                <div class="card-body">
-                                                    <a data-toggle="collapse" href="#collapse<?= $item['id']['videoId'] ?>">
-                                                            <h6 class="card-title"><?= $item['snippet']['title'] ?></h6>
-                                                    </a>
-                                                    <p class="card-text text-small"><?= $item['snippet']['description'] ?></p>
-
-                                                    <small class="text-muted">Опубликовал <?= $item['snippet']['channelTitle'] ?> в <?= date('M d, Y H:i', strtotime($item['snippet']['publishedAt'])) ?></small>
-                                                </div>
+                            <div class="accordion mt-2" id="accordionExample">
+                                <?php foreach ($response['items'] as $item) : ?>
+                                    <div class="card">
+                                        <div class="card-header" id="heading<?= $item['id']['videoId'] ?>">
+                                            <h2 class="mb-0">
+                                                <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#collapse<?= $item['id']['videoId'] ?>" aria-expanded="true" aria-controls="collapseOne">
+                                                    <?= $item['snippet']['title'] ?>, <?= $item['snippet']['channelTitle'] ?>, <?= date('d M Y H:i', strtotime($item['snippet']['publishedAt'])) ?>
+                                                </button>
+                                            </h2>
+                                        </div>
+                                        
+                                        <div id="collapse<?= $item['id']['videoId'] ?>" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
+                                            <div class="card-body">
+                                                <iframe 
+                                                    width="560" 
+                                                    height="315" 
+                                                    src="https://www.youtube.com/embed/<?= $item['id']['videoId'] ?>" 
+                                                    frameborder="0" 
+                                                    allow="autoplay; encrypted-media" 
+                                                    allowfullscreen>
+                                                </iframe>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <!-- Контейнер с видео, который выдвигается когда нажимаем на название видео -->
-                                <div class="collapse" id="collapse<?= $item['id']['videoId'] ?>">
-                                    <div class="card card-body">
-                                            <iframe 
-                                                width="560" 
-                                                height="315" 
-                                                src="https://www.youtube.com/embed/<?= $item['id']['videoId'] ?>" 
-                                                frameborder="0" 
-                                                allow="autoplay; encrypted-media" 
-                                                allowfullscreen>
-                                            </iframe>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            </div>
                         <?php else : ?>
                             <span class="text-muted">
                                     По запросу <?= $_GET['query'] ?>  ничего не найдено

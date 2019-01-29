@@ -1,5 +1,7 @@
 <?php
 
+date_default_timezone_set('UTC');
+
 /**
  * Ключ API, полученный в https://console.developers.google.com
  */
@@ -16,11 +18,24 @@ define('APIKey', 'AIzaSyAiTl8iIG6CCWBS9AfGV2B2jvs0vSgedRw');
 function getResultsBySearch(string $query, string $sort = 'viewCount', int $maxResult = 20)
 {
     /**
+     * Собираем дату на неделю назад, для того чтобы получить видео не старше одной недели
+     */
+    $dateTime = new DateTime;
+    $dateTime->sub(new DateInterval('P1W'));
+    $dateTime->setTime(0, 0);
+
+    /**
      * Собираем URL, так как API принимает только GET, то параметры добавляем в ссылку
      */
     $baseUrl = 'https://www.googleapis.com/youtube/v3/search';
     $afterUrl = http_build_query([
-        'part' => 'snippet', 'q' => trim($query), 'maxResults' => $maxResult, 'key' => APIKey, 'order' => $sort, 'type' => 'video'
+        'part' => 'snippet', 
+        'q' => trim($query), 
+        'maxResults' => $maxResult, 
+        'key' => APIKey, 
+        'order' => $sort, 
+        'type' => 'video', 
+        'publishedAfter' => $dateTime->format(DATE_ATOM)
     ]);
 
     $curl = curl_init($baseUrl . '?' . $afterUrl);
