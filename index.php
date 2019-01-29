@@ -15,30 +15,73 @@ define('APIKey', 'AIzaSyAiTl8iIG6CCWBS9AfGV2B2jvs0vSgedRw');
  * @param int $maxResult Количество видео
  * @return array
  */
-function getResultsBySearch(string $query, string $sort = 'viewCount', int $maxResult = 20)
+function getResultsBySearch(string $query, string $sort = 'date', int $maxResult = 20)
 {
-    /**
-     * Собираем дату на неделю назад, для того чтобы получить видео не старше одной недели
-     */
-    $dateTime = new DateTime;
-    $dateTime->sub(new DateInterval('P1W'));
-    $dateTime->setTime(0, 0);
+    $response = goAPI('https://www.googleapis.com/youtube/v3/search', [
+        'part' => 'id', 'q' => trim($query), 'maxResults' => $maxResult, 'key' => APIKey, 'order' => $sort, 'type' => 'video'
+    ]);
 
+    /**
+     * Преобразуем результат в массив и возвращаем из функции
+     */
+    return json_decode($response, true);
+}
+
+/**
+ * Возвращает окончательный массив видеороликов
+ * @param array Массив видеороликов
+ * @return array
+ */
+function getResultOrderByViews(array $items = []) 
+{
+    if (count($items) > 0) {
+        $videoIds = implode(',', getVideoIds($items));
+
+        $response = goAPI('https://www.googleapis.com/youtube/v3/videos', [
+            'part' => 'snippet,statistics', 'id' => $videoIds, 'key' => APIKey
+        ]);
+
+        return json_decode($response, true);
+    }
+
+    return [];
+}
+
+/**
+ * Возвращает ID полученных видеороликов в виде списка
+ * @param array $items Массив видеороликов
+ * @return array
+ */
+function getVideoIds(array $items = [])
+{
+    $result = [];
+
+    if (count($items) > 0) {
+        foreach($items as $item) {
+            if (isset($item['id']['videoId'])) {
+                $result[] = $item['id']['videoId'];
+            }
+        }
+    }
+
+    return $result;
+}
+
+function goAPI(string $url, array $params = null)
+{
     /**
      * Собираем URL, так как API принимает только GET, то параметры добавляем в ссылку
      */
-    $baseUrl = 'https://www.googleapis.com/youtube/v3/search';
-    $afterUrl = http_build_query([
-        'part' => 'snippet', 
-        'q' => trim($query), 
-        'maxResults' => $maxResult, 
-        'key' => APIKey, 
-        'order' => $sort, 
-        'type' => 'video', 
-        'publishedAfter' => $dateTime->format(DATE_ATOM)
-    ]);
+    if ($params) {
+        $paramUrl = http_build_query($params);
+    }
 
-    $curl = curl_init($baseUrl . '?' . $afterUrl);
+    /**
+     * Если же быле переданы параметры в аргументе $params, то следует добавить их к финальной ссылке
+     */
+    $url = isset($paramUrl) ? $url . '?' . $paramUrl : $url;
+
+    $curl = curl_init($url);
 
     /**
      * Присваиваем параметры Curl
@@ -51,18 +94,32 @@ function getResultsBySearch(string $query, string $sort = 'viewCount', int $maxR
     $response = curl_exec($curl);
     curl_close($curl);
 
-    /**
-     * Преобразуем результат в массив и возвращаем из функции
-     */
-    return json_decode($response, true);
+    return $response;
 }
 
 /**
- * Если вдруг параметр с запросом был отправлен, то осуществляем поиск
+ * Если вдруг параметр с текстом запроса был отправлен, то осуществляем поиск
  */
 if (isset($_GET['query'])) {
-    $response = getResultsBySearch($_GET['query']);
+    /**
+     * Здесь мы получаем только ID видеороликов, которые соответствуют запросу
+     */
+    $responseSearch = getResultsBySearch($_GET['query']);
+    /**
+     * Для того, чтобы получить информацию о количестве просмотров, мы должны по результату поиска
+     * получить информация о найденных видеороликов. Для этого по ID видеороликов мы через API
+     * получим статистику, название и т.д.
+     */
+    $response = getResultOrderByViews($responseSearch['items'] ?? []);
+
+    /**
+     * Сортируем список по количеству просмотров
+     */
+    usort($response['items'], function ($valueOne, $valueTwo) { 
+        return $valueTwo['statistics']['viewCount'] <=> $valueOne['statistics']['viewCount'];
+    });
 }
+
 
 /**
  * Выводим на экран
